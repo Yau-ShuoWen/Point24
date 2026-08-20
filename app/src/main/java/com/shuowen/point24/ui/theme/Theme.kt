@@ -1,54 +1,80 @@
 package com.shuowen.point24.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80
+enum class ThemeMode {
+    System,
+    Light,
+    Dark
+}
+
+private val Point24DarkColorScheme = darkColorScheme(
+    primary = GoldAccent,
+    onPrimary = Ink,
+    secondary = Mist,
+    onSecondary = Ink,
+    secondaryContainer = Moss,
+    onSecondaryContainer = CreamCard,
+    tertiary = Moss,
+    onTertiary = CreamCard,
+    background = TableGreen,
+    onBackground = CreamCard,
+    surface = FeltGreen,
+    onSurface = CreamCard,
+    surfaceVariant = Moss,
+    onSurfaceVariant = Mist,
+    surfaceContainer = Color(0xFF1E453D),
+    surfaceContainerHigh = Color(0xFF255046),
+    surfaceBright = CreamCard,
+    outline = SoftSlate,
+    error = Berry,
+    errorContainer = Color(0xFF5A2C2C),
+    onErrorContainer = Color(0xFFF8DEDE)
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40, secondary = PurpleGrey40, tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val Point24LightColorScheme = lightColorScheme(
+    primary = Sunburst,
+    onPrimary = Snow,
+    secondary = SageMist,
+    onSecondary = Ink,
+    secondaryContainer = SoftMint,
+    onSecondaryContainer = ForestInk,
+    tertiary = ForestInk,
+    onTertiary = Ivory,
+    background = Linen,
+    onBackground = Ink,
+    surface = Ivory,
+    onSurface = Ink,
+    surfaceVariant = PaleMoss,
+    onSurfaceVariant = ForestInk,
+    surfaceContainer = Porcelain,
+    surfaceContainerHigh = MintWash,
+    surfaceBright = White,
+    outline = SageOutline,
+    error = Berry,
+    errorContainer = Color(0xFFF4D9D9),
+    onErrorContainer = Color(0xFF5A2C2C)
 )
 
 @Composable
 fun Point24Theme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true, content: @Composable () -> Unit
-)
-{
-    val colorScheme = when
-    {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-        {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    themeMode: ThemeMode = ThemeMode.System,
+    content: @Composable () -> Unit
+) {
+    val isDarkTheme = when (themeMode) {
+        ThemeMode.System -> isSystemInDarkTheme()
+        ThemeMode.Light -> false
+        ThemeMode.Dark -> true
     }
 
     MaterialTheme(
-        colorScheme = colorScheme, typography = Typography, content = content
+        colorScheme = if (isDarkTheme) Point24DarkColorScheme else Point24LightColorScheme,
+        typography = Typography,
+        content = content
     )
 }
