@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+app/release/
+*.apk
+*.dm
+hs_err_pid*.log
+replay_pid*.log

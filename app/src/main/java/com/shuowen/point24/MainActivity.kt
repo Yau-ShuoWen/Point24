@@ -1,9 +1,11 @@
 package com.shuowen.point24
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -37,7 +39,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,23 +75,19 @@ import com.shuowen.point24.ui.theme.Point24Theme
 import com.shuowen.point24.ui.theme.RoseDust
 import com.shuowen.point24.ui.theme.ThemeMode
 import com.shuowen.point24.ui.theme.WarmGold
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             var themeMode by remember { mutableStateOf(loadThemeModePreference()) }
-            val isSystemDark = isSystemInDarkTheme()
 
             Point24Theme(themeMode = themeMode) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Point24App(
                         themeMode = themeMode,
-                        onThemeToggle = {
-                            val nextMode = nextThemeMode(
-                                currentMode = themeMode,
-                                isSystemDark = isSystemDark
-                            )
+                        onThemeModeChange = { nextMode ->
                             themeMode = nextMode
                             saveThemeModePreference(nextMode)
                         }
@@ -158,14 +155,26 @@ private fun cardValueOf(label: String): Int = when (label) {
     else -> label.toInt()
 }
 
+private fun cardLabelOf(value: Int): String = when (value) {
+    1 -> "A"
+    11 -> "J"
+    12 -> "Q"
+    13 -> "K"
+    else -> value.toString()
+}
+
+private fun randomCardLabels(requireSolution: Boolean): List<String> {
+    while (true) {
+        val values = List(4) { Random.nextInt(1, 14) }
+        val hasSolution = Point24.calc24(*values.toIntArray()).isNotEmpty()
+        if (!requireSolution || hasSolution) {
+            return values.map(::cardLabelOf)
+        }
+    }
+}
+
 private const val THEME_PREFS = "point24_theme_prefs"
 private const val THEME_MODE_KEY = "theme_mode"
-
-private fun nextThemeMode(currentMode: ThemeMode, isSystemDark: Boolean): ThemeMode = when (currentMode) {
-    ThemeMode.System -> if (isSystemDark) ThemeMode.Light else ThemeMode.Dark
-    ThemeMode.Light -> ThemeMode.Dark
-    ThemeMode.Dark -> ThemeMode.Light
-}
 
 private data class PaletteOverride(
     val cardKeyContainer: Color,
@@ -214,7 +223,7 @@ private fun rememberPaletteOverride(): PaletteOverride {
 @Composable
 fun Point24App(
     themeMode: ThemeMode,
-    onThemeToggle: () -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
 ) {
     var cards by remember { mutableStateOf(List(4) { "" }) }
     var activeIndex by remember { mutableStateOf<Int?>(null) }
@@ -224,7 +233,6 @@ fun Point24App(
     var answers by remember { mutableStateOf<List<String>>(emptyList()) }
     var bottomAreaHeight by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
-    val isSystemDark = isSystemInDarkTheme()
     val paletteOverride = rememberPaletteOverride()
 
     fun clearAll() {
@@ -300,6 +308,19 @@ fun Point24App(
         selectedTab = ResultTab.Hint
     }
 
+    fun fillRandomCards(requireSolution: Boolean) {
+        cards = randomCardLabels(requireSolution)
+        activeIndex = null
+        hasQueried = false
+        selectedTab = ResultTab.Hint
+        hintMessage = if (requireSolution) {
+            "已生成一组可解牌面。"
+        } else {
+            "已生成一组随机牌面。"
+        }
+        answers = emptyList()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -329,8 +350,7 @@ fun Point24App(
 
                 ThemeToggleButton(
                     themeMode = themeMode,
-                    isSystemDark = isSystemDark,
-                    onClick = onThemeToggle
+                    onThemeModeChange = onThemeModeChange
                 )
             }
 
@@ -370,6 +390,26 @@ fun Point24App(
                 }
             }
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (!hasQueried) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    RandomFillButton(
+                        text = "来组可解",
+                        modifier = Modifier.weight(1f),
+                        onClick = { fillRandomCards(requireSolution = true) }
+                    )
+                    RandomFillButton(
+                        text = "随便来组",
+                        modifier = Modifier.weight(1f),
+                        onClick = { fillRandomCards(requireSolution = false) }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             if (hasQueried) {
@@ -384,14 +424,15 @@ fun Point24App(
             Spacer(modifier = Modifier.height(bottomAreaHeight.dp + 12.dp))
         }
 
-        Box(
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 20.dp)
                 .onSizeChanged {
                     bottomAreaHeight = with(density) { it.height.toDp().value.toInt() }
-                }
+                },
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (!hasQueried) {
                 Keypad(
@@ -427,31 +468,101 @@ fun Point24App(
 }
 
 @Composable
-private fun ThemeToggleButton(
-    themeMode: ThemeMode,
-    isSystemDark: Boolean,
+private fun RandomFillButton(
+    text: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val label = when (themeMode) {
-        ThemeMode.System -> if (isSystemDark) "跟随系统: 深色" else "跟随系统: 浅色"
-        ThemeMode.Light -> "切到深色"
-        ThemeMode.Dark -> "切到浅色"
-    }
-
-    OutlinedButton(
+    Button(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        colors = ButtonDefaults.outlinedButtonColors(
+        modifier = modifier.height(52.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        )
+            contentColor = MaterialTheme.colorScheme.primary
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
     ) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge
+            text = text,
+            style = MaterialTheme.typography.titleMedium
         )
+    }
+}
+
+@SuppressLint("UnusedBoxWithConstraintsScope")
+@Composable
+private fun ThemeToggleButton(
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .width(180.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)),
+                RoundedCornerShape(18.dp)
+            )
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp)
+        ) {
+            val selectedIndex = ThemeMode.entries.indexOf(themeMode).coerceAtLeast(0)
+            val segmentWidth = maxWidth / ThemeMode.entries.size
+            val indicatorOffset by animateDpAsState(
+                targetValue = segmentWidth * selectedIndex,
+                animationSpec = tween(durationMillis = 260),
+                label = "theme selection indicator"
+            )
+
+            Box(
+                modifier = Modifier
+                    .offset(x = indicatorOffset)
+                    .width(segmentWidth)
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+
+            Row(modifier = Modifier.fillMaxSize()) {
+                ThemeMode.entries.forEach { mode ->
+                    val selected = mode == themeMode
+                    val label = when (mode) {
+                        ThemeMode.System -> "系统色"
+                        ThemeMode.Light -> "亮色"
+                        ThemeMode.Dark -> "暗色"
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onThemeModeChange(mode) }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -608,6 +719,7 @@ private fun ResultPanel(
     }
 }
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun ResultTabs(
     selectedTab: ResultTab,
@@ -768,7 +880,7 @@ fun Point24AppPreview() {
     Point24Theme {
         Point24App(
             themeMode = ThemeMode.System,
-            onThemeToggle = {}
+            onThemeModeChange = {}
         )
     }
 }
