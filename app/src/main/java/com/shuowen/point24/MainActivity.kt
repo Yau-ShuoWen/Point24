@@ -212,6 +212,11 @@ private fun randomCardLabels(requireSolution: Boolean): List<String> {
 private const val THEME_PREFS = "point24_theme_prefs"
 private const val THEME_MODE_KEY = "theme_mode"
 private const val MAX_FONT_SCALE = 1.2f
+private const val COMPACT_ACTION_TEXT_THRESHOLD = 1.1f
+
+@Composable
+private fun shouldUseCompactActionText(): Boolean =
+    LocalConfiguration.current.fontScale > COMPACT_ACTION_TEXT_THRESHOLD
 
 private data class PaletteOverride(
     val cardKeyContainer: Color,
@@ -270,6 +275,7 @@ fun Point24App(
     var answers by remember { mutableStateOf<List<String>>(emptyList()) }
     var bottomAreaHeight by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
+    val useCompactActionText = shouldUseCompactActionText()
     val paletteOverride = rememberPaletteOverride()
 
     fun clearAll() {
@@ -485,7 +491,11 @@ fun Point24App(
                         ) {
                             Text(
                                 text = "重新输入",
-                                style = MaterialTheme.typography.labelLarge,
+                            style = if (useCompactActionText) {
+                                MaterialTheme.typography.labelLarge
+                            } else {
+                                MaterialTheme.typography.titleMedium
+                            },
                                 maxLines = 1
                             )
                             Icon(
@@ -551,6 +561,8 @@ private fun RandomFillButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val useCompactActionText = shouldUseCompactActionText()
+
     Button(
         onClick = onClick,
         modifier = modifier.height(52.dp),
@@ -567,7 +579,11 @@ private fun RandomFillButton(
         ) {
             Text(
                 text = text,
-                style = MaterialTheme.typography.labelLarge,
+                style = if (useCompactActionText) {
+                    MaterialTheme.typography.labelLarge
+                } else {
+                    MaterialTheme.typography.titleMedium
+                },
                 maxLines = 1
             )
             Icon(
@@ -585,6 +601,8 @@ private fun ThemeToggleButton(
     themeMode: ThemeMode,
     onThemeModeChange: (ThemeMode) -> Unit,
 ) {
+    val useCompactActionText = shouldUseCompactActionText()
+
     Row(
         modifier = Modifier
             .width(180.dp)
@@ -656,7 +674,11 @@ private fun ThemeToggleButton(
                         when (mode) {
                             ThemeMode.System -> Text(
                                 text = "跟随系统",
-                                style = MaterialTheme.typography.labelMedium,
+                                style = if (useCompactActionText) {
+                                    MaterialTheme.typography.labelMedium
+                                } else {
+                                    MaterialTheme.typography.labelLarge
+                                },
                                 color = contentColor,
                                 maxLines = 1
                             )
@@ -851,6 +873,7 @@ private fun ResultTabs(
     selectedTab: ResultTab,
     onTabSelected: (ResultTab) -> Unit,
 ) {
+    val useCompactActionText = shouldUseCompactActionText()
     val selectedFraction by animateFloatAsState(
         targetValue = if (selectedTab == ResultTab.Hint) 0f else 1f,
         animationSpec = tween(280),
@@ -911,7 +934,11 @@ private fun ResultTabs(
                         ) {
                             Text(
                                 text = label,
-                                style = MaterialTheme.typography.labelLarge,
+                                style = if (useCompactActionText) {
+                                    MaterialTheme.typography.labelLarge
+                                } else {
+                                    MaterialTheme.typography.titleMedium
+                                },
                                 color = contentColor,
                                 maxLines = 1
                             )
