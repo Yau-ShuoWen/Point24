@@ -471,10 +471,21 @@ fun Point24App(
                         contentColor = paletteOverride.resetButtonContent
                     )
                 ) {
-                    Text(
-                        text = "重新输入",
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "重新输入",
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1
+                        )
+                        Icon(
+                            painter = painterResource(R.drawable.ic_refresh),
+                            contentDescription = "重新输入",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
@@ -681,12 +692,22 @@ private fun ResultPanel(
 ) {
     val configuration = LocalConfiguration.current
     val resultBodyMaxHeight = (configuration.screenHeightDp * 0.34f).dp
+    val isDarkPalette = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val resultContainerColor = if (isDarkPalette) {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = resultContainerColor
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = if (isDarkPalette) 0.3f else 0.55f)
         )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -703,14 +724,6 @@ private fun ResultPanel(
                 when (selectedTab) {
                     ResultTab.Hint -> {
                         Text(
-                            text = "提示",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Text(
                             text = hintMessage,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -718,14 +731,6 @@ private fun ResultPanel(
                     }
 
                     ResultTab.Answer -> {
-                        Text(
-                            text = "答案",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
                         if (answers.isEmpty()) {
                             Text(
                                 text = "没有可展示的解法。",
@@ -742,7 +747,22 @@ private fun ResultPanel(
                                         modifier = Modifier
                                             .size(28.dp)
                                             .clip(RoundedCornerShape(14.dp))
-                                            .background(MaterialTheme.colorScheme.secondaryContainer),
+                                            .background(
+                                                if (isDarkPalette) {
+                                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.28f)
+                                                } else {
+                                                    MaterialTheme.colorScheme.surface
+                                                }
+                                            )
+                                            .border(
+                                                BorderStroke(
+                                                    1.dp,
+                                                    MaterialTheme.colorScheme.outline.copy(
+                                                        alpha = if (isDarkPalette) 0.75f else 0.25f
+                                                    )
+                                                ),
+                                                RoundedCornerShape(14.dp)
+                                            ),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
@@ -813,9 +833,9 @@ private fun ResultTabs(
                 modifier = Modifier.fillMaxSize()
             ) {
                 listOf(
-                    ResultTab.Hint to "提示",
-                    ResultTab.Answer to "答案"
-                ).forEach { (tab, label) ->
+                    Triple(ResultTab.Hint, "提示", R.drawable.ic_lightbulb),
+                    Triple(ResultTab.Answer, "答案", R.drawable.ic_key)
+                ).forEach { (tab, label, iconRes) ->
                     val selected = selectedTab == tab
                     Box(
                         modifier = Modifier
@@ -828,15 +848,30 @@ private fun ResultTabs(
                             ) { onTabSelected(tab) },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (selected) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
-                        )
+                        val contentColor = if (selected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = contentColor,
+                                maxLines = 1
+                            )
+                            Icon(
+                                painter = painterResource(iconRes),
+                                contentDescription = label,
+                                modifier = Modifier.size(
+                                    if (tab == ResultTab.Answer) 22.dp else 19.dp
+                                ),
+                                tint = contentColor
+                            )
+                        }
                     }
                 }
             }
