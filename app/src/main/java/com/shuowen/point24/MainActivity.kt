@@ -79,7 +79,6 @@ import com.shuowen.point24.ui.theme.CreamCard
 import com.shuowen.point24.ui.theme.DeepTealGlow
 import com.shuowen.point24.ui.theme.DeepTeal
 import com.shuowen.point24.ui.theme.OliveGold
-import com.shuowen.point24.ui.theme.Pine
 import com.shuowen.point24.ui.theme.Point24Theme
 import com.shuowen.point24.ui.theme.RoseDust
 import com.shuowen.point24.ui.theme.ThemeMode
@@ -229,7 +228,7 @@ private fun rememberPaletteOverride(): PaletteOverride {
         PaletteOverride(
             cardKeyContainer = DeepTeal,
             cardKeyContent = CreamCard,
-            cardKeyBorder = Pine,
+            cardKeyBorder = colorScheme.outline.copy(alpha = 0.8f),
             activeSlotAccent = WarmGold,
             activeSlotContainer = DeepTealGlow,
             resetButtonContainer = colorScheme.tertiary,
@@ -408,11 +407,15 @@ fun Point24App(
                 ) {
                     RandomFillButton(
                         text = "来组可解",
+                        iconRes = R.drawable.ic_lightbulb,
+                        iconDescription = "可解提示",
                         modifier = Modifier.weight(1f),
                         onClick = { fillRandomCards(requireSolution = true) }
                     )
                     RandomFillButton(
                         text = "随便来组",
+                        iconRes = R.drawable.ic_dice,
+                        iconDescription = "随机",
                         modifier = Modifier.weight(1f),
                         onClick = { fillRandomCards(requireSolution = false) }
                     )
@@ -481,6 +484,8 @@ fun Point24App(
 @Composable
 private fun RandomFillButton(
     text: String,
+    iconRes: Int,
+    iconDescription: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -494,10 +499,21 @@ private fun RandomFillButton(
         ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1
+            )
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = iconDescription,
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
 
@@ -882,7 +898,7 @@ private fun KeypadButton(
     }
     val borderColor = when (action.kind) {
         KeypadActionKind.Card -> paletteOverride.cardKeyBorder
-        KeypadActionKind.Delete -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.45f)
+        KeypadActionKind.Delete -> paletteOverride.cardKeyBorder
         KeypadActionKind.Clear -> paletteOverride.clearButtonBorder
         KeypadActionKind.Query -> MaterialTheme.colorScheme.primary
     }
@@ -904,13 +920,44 @@ private fun KeypadButton(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = action.label,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = if (enabled) contentColor else contentColor.copy(alpha = 0.45f),
-            textAlign = TextAlign.Center
-        )
+        val displayedContentColor = when {
+            enabled -> contentColor
+            action.kind == KeypadActionKind.Query -> {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+            }
+            else -> contentColor.copy(alpha = 0.45f)
+        }
+
+        when (action.kind) {
+            KeypadActionKind.Card -> Text(
+                text = action.label,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = displayedContentColor,
+                textAlign = TextAlign.Center
+            )
+
+            KeypadActionKind.Delete -> Icon(
+                painter = painterResource(R.drawable.ic_backspace),
+                contentDescription = "退格",
+                modifier = Modifier.size(26.dp),
+                tint = displayedContentColor
+            )
+
+            KeypadActionKind.Clear -> Icon(
+                painter = painterResource(R.drawable.ic_delete),
+                contentDescription = "清空",
+                modifier = Modifier.size(25.dp),
+                tint = displayedContentColor
+            )
+
+            KeypadActionKind.Query -> Icon(
+                painter = painterResource(R.drawable.ic_search),
+                contentDescription = "查询",
+                modifier = Modifier.size(25.dp),
+                tint = displayedContentColor
+            )
+        }
     }
 }
 
