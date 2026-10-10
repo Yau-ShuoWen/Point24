@@ -42,6 +42,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -62,12 +63,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.layout.onSizeChanged
@@ -369,37 +370,14 @@ fun Point24App(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "24 POINT",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 3.sp
-                )
-
                 ThemeToggleButton(
                     themeMode = themeMode,
                     onThemeModeChange = onThemeModeChange
                 )
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-//            Text(
-//                text = "四张牌，直接算",
-//                style = MaterialTheme.typography.headlineLarge,
-//                color = MaterialTheme.colorScheme.onBackground
-//            )
-//
-//            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = if (hasQueried) "切换查看提示或完整答案。" else "点击下方牌面键盘输入",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
 
             Spacer(modifier = Modifier.height(28.dp))
 
@@ -546,18 +524,31 @@ private fun ThemeToggleButton(
                 .fillMaxWidth()
                 .height(36.dp)
         ) {
-            val selectedIndex = ThemeMode.entries.indexOf(themeMode).coerceAtLeast(0)
-            val segmentWidth = maxWidth / ThemeMode.entries.size
+            val iconSegmentWidth = maxWidth / 4
+            val selectedWidth = if (themeMode == ThemeMode.System) {
+                iconSegmentWidth * 2
+            } else {
+                iconSegmentWidth
+            }
             val indicatorOffset by animateDpAsState(
-                targetValue = segmentWidth * selectedIndex,
+                targetValue = when (themeMode) {
+                    ThemeMode.System -> 0.dp
+                    ThemeMode.Light -> iconSegmentWidth * 2
+                    ThemeMode.Dark -> iconSegmentWidth * 3
+                },
                 animationSpec = tween(durationMillis = 260),
                 label = "theme selection indicator"
+            )
+            val indicatorWidth by animateDpAsState(
+                targetValue = selectedWidth,
+                animationSpec = tween(durationMillis = 260),
+                label = "theme selection indicator width"
             )
 
             Box(
                 modifier = Modifier
                     .offset(x = indicatorOffset)
-                    .width(segmentWidth)
+                    .width(indicatorWidth)
                     .height(36.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.primary)
@@ -566,15 +557,10 @@ private fun ThemeToggleButton(
             Row(modifier = Modifier.fillMaxSize()) {
                 ThemeMode.entries.forEach { mode ->
                     val selected = mode == themeMode
-                    val label = when (mode) {
-                        ThemeMode.System -> "系统色"
-                        ThemeMode.Light -> "亮色"
-                        ThemeMode.Dark -> "暗色"
-                    }
 
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(if (mode == ThemeMode.System) 2f else 1f)
                             .fillMaxSize()
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
@@ -583,15 +569,34 @@ private fun ThemeToggleButton(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (selected) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
-                        )
+                        val contentColor = if (selected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+
+                        when (mode) {
+                            ThemeMode.System -> Text(
+                                text = "跟随系统",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = contentColor,
+                                maxLines = 1
+                            )
+
+                            ThemeMode.Light -> Icon(
+                                painter = painterResource(R.drawable.ic_sun),
+                                contentDescription = "亮色",
+                                modifier = Modifier.size(20.dp),
+                                tint = contentColor
+                            )
+
+                            ThemeMode.Dark -> Icon(
+                                painter = painterResource(R.drawable.ic_moon),
+                                contentDescription = "暗色",
+                                modifier = Modifier.size(20.dp),
+                                tint = contentColor
+                            )
+                        }
                     }
                 }
             }
