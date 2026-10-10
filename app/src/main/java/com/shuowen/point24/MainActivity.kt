@@ -7,6 +7,12 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -352,20 +358,18 @@ fun Point24App(
         answers = emptyList()
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .pointerInput(Unit) {
-                detectTapGestures(onTap = {
-                    activeIndex = null
-                })
+                detectTapGestures(onTap = { activeIndex = null })
             }
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 24.dp)
+                .fillMaxWidth()
+                .padding(start = 20.dp, top = 24.dp, end = 20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -397,98 +401,145 @@ fun Point24App(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (!hasQueried) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    RandomFillButton(
-                        text = "来组可解",
-                        iconRes = R.drawable.ic_lightbulb,
-                        iconDescription = "可解提示",
-                        modifier = Modifier.weight(1f),
-                        onClick = { fillRandomCards(requireSolution = true) }
-                    )
-                    RandomFillButton(
-                        text = "随便来组",
-                        iconRes = R.drawable.ic_dice,
-                        iconDescription = "随机",
-                        modifier = Modifier.weight(1f),
-                        onClick = { fillRandomCards(requireSolution = false) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            if (hasQueried) {
-                ResultPanel(
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it },
-                    hintMessage = hintMessage,
-                    answers = answers,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-            }
-            Spacer(modifier = Modifier.height(bottomAreaHeight.dp + 12.dp))
         }
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 20.dp)
-                .onSizeChanged {
-                    bottomAreaHeight = with(density) { it.height.toDp().value.toInt() }
-                },
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (!hasQueried) {
-                Keypad(
-                    queryEnabled = cards.none { it.isBlank() },
-                    onAction = { action ->
-                        when (action.kind) {
-                            KeypadActionKind.Card -> applyCard(action.label)
-                            KeypadActionKind.Delete -> deleteCard()
-                            KeypadActionKind.Clear -> clearAll()
-                            KeypadActionKind.Query -> runQuery()
+        PageTurnContent(
+            targetIsResult = hasQueried,
+            modifier = Modifier.weight(1f)
+        ) { isResult ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 20.dp, top = 12.dp, end = 20.dp)
+            ) {
+                if (isResult) {
+                    ResultPanel(
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it },
+                        hintMessage = hintMessage,
+                        answers = answers
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        RandomFillButton(
+                            text = "来组可解",
+                            iconRes = R.drawable.ic_lightbulb,
+                            iconDescription = "可解提示",
+                            modifier = Modifier.weight(1f),
+                            onClick = { fillRandomCards(requireSolution = true) }
+                        )
+                        RandomFillButton(
+                            text = "随便来组",
+                            iconRes = R.drawable.ic_dice,
+                            iconDescription = "随机",
+                            modifier = Modifier.weight(1f),
+                            onClick = { fillRandomCards(requireSolution = false) }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(bottomAreaHeight.dp + 12.dp))
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 20.dp)
+                    .onSizeChanged {
+                        bottomAreaHeight = with(density) { it.height.toDp().value.toInt() }
+                    },
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (!isResult) {
+                    Keypad(
+                        queryEnabled = cards.none { it.isBlank() },
+                        onAction = { action ->
+                            when (action.kind) {
+                                KeypadActionKind.Card -> applyCard(action.label)
+                                KeypadActionKind.Delete -> deleteCard()
+                                KeypadActionKind.Clear -> clearAll()
+                                KeypadActionKind.Query -> runQuery()
+                            }
+                        }
+                    )
+                } else {
+                    Button(
+                        onClick = { clearAll() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = paletteOverride.resetButtonContainer,
+                            contentColor = paletteOverride.resetButtonContent
+                        )
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "重新输入",
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1
+                            )
+                            Icon(
+                                painter = painterResource(R.drawable.ic_refresh),
+                                contentDescription = "重新输入",
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
                     }
-                )
-            } else {
-                Button(
-                    onClick = { clearAll() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = paletteOverride.resetButtonContainer,
-                        contentColor = paletteOverride.resetButtonContent
-                    )
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "重新输入",
-                            style = MaterialTheme.typography.labelLarge,
-                            maxLines = 1
-                        )
-                        Icon(
-                            painter = painterResource(R.drawable.ic_refresh),
-                            contentDescription = "重新输入",
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
                 }
             }
         }
+    }
+}
+}
+
+@Composable
+private fun PageTurnContent(
+    targetIsResult: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable (Boolean) -> Unit,
+) {
+    AnimatedContent(
+        targetState = targetIsResult,
+        modifier = modifier.fillMaxSize(),
+        transitionSpec = {
+            val enter = if (targetState) {
+                slideInHorizontally(
+                    animationSpec = tween(durationMillis = 420),
+                    initialOffsetX = { fullWidth -> fullWidth }
+                )
+            } else {
+                slideInHorizontally(
+                    animationSpec = tween(durationMillis = 420),
+                    initialOffsetX = { fullWidth -> -fullWidth }
+                )
+            }
+            val exit = if (targetState) {
+                slideOutHorizontally(
+                    animationSpec = tween(durationMillis = 420),
+                    targetOffsetX = { fullWidth -> -fullWidth }
+                )
+            } else {
+                slideOutHorizontally(
+                    animationSpec = tween(durationMillis = 420),
+                    targetOffsetX = { fullWidth -> fullWidth }
+                )
+            }
+
+            (enter togetherWith exit).using(SizeTransform(clip = true))
+        },
+        label = "input_result_page_turn"
+    ) { isResult ->
+        content(isResult)
     }
 }
 
@@ -719,6 +770,7 @@ private fun ResultPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = resultBodyMaxHeight)
+                    .animateContentSize(animationSpec = tween(durationMillis = 320))
                     .verticalScroll(rememberScrollState())
             ) {
                 when (selectedTab) {
