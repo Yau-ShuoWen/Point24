@@ -1,10 +1,12 @@
 package com.shuowen.point24
 
 import android.annotation.SuppressLint
+import android.os.Build
 import android.os.Bundle
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.view.WindowCompat
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -15,6 +17,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,6 +46,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -59,6 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.verticalScroll
@@ -82,16 +90,38 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             var themeMode by remember { mutableStateOf(loadThemeModePreference()) }
+            val systemDensity = LocalDensity.current
+            val cappedDensity = remember(systemDensity) {
+                Density(
+                    density = systemDensity.density,
+                    fontScale = systemDensity.fontScale.coerceAtMost(MAX_FONT_SCALE)
+                )
+            }
 
-            Point24Theme(themeMode = themeMode) {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    Point24App(
-                        themeMode = themeMode,
-                        onThemeModeChange = { nextMode ->
-                            themeMode = nextMode
-                            saveThemeModePreference(nextMode)
+            CompositionLocalProvider(LocalDensity provides cappedDensity) {
+                Point24Theme(themeMode = themeMode) {
+                    val navigationBarColor = MaterialTheme.colorScheme.background
+                    val useDarkNavigationIcons = navigationBarColor.luminance() > 0.5f
+
+                    SideEffect {
+                        @Suppress("DEPRECATION")
+                        window.navigationBarColor = navigationBarColor.toArgb()
+                        WindowCompat.getInsetsController(window, window.decorView)
+                            .isAppearanceLightNavigationBars = useDarkNavigationIcons
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            window.isNavigationBarContrastEnforced = false
                         }
-                    )
+                    }
+
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        Point24App(
+                            themeMode = themeMode,
+                            onThemeModeChange = { nextMode ->
+                                themeMode = nextMode
+                                saveThemeModePreference(nextMode)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -175,6 +205,7 @@ private fun randomCardLabels(requireSolution: Boolean): List<String> {
 
 private const val THEME_PREFS = "point24_theme_prefs"
 private const val THEME_MODE_KEY = "theme_mode"
+private const val MAX_FONT_SCALE = 1.2f
 
 private data class PaletteOverride(
     val cardKeyContainer: Color,
@@ -428,6 +459,8 @@ fun Point24App(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 20.dp)
                 .onSizeChanged {
                     bottomAreaHeight = with(density) { it.height.toDp().value.toInt() }
@@ -804,7 +837,9 @@ private fun Keypad(
     ) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),
-            modifier = Modifier.height(324.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f),
             userScrollEnabled = false,
             contentPadding = PaddingValues(14.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -849,7 +884,7 @@ private fun KeypadButton(
 
     Box(
         modifier = Modifier
-            .height(64.dp)
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(18.dp))
             .background(if (enabled) containerColor else containerColor.copy(alpha = 0.35f))
             .border(
